@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MAX_PROFILES 10
+#define MAX_PROFILES 100
 
 typedef struct {
     uint64_t call_count;
