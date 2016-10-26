@@ -6,13 +6,18 @@ static int num_profiles = 0;
 
 void profile_init(Profile *prof, const char *label)
 {
-    prof->call_count = 0;
-    prof->av_ticks = 0;
+    profile_reset(prof);
     prof->label = label;
 
     if (num_profiles < MAX_PROFILES) {
         profile_list[num_profiles++] = prof;
     }
+}
+
+void profile_reset(Profile *prof) 
+{
+    prof->call_count = 0;
+    prof->av_ticks = 0;
 }
 
 void profile_start(Profile *prof)

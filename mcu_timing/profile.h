@@ -13,6 +13,7 @@ typedef struct {
 } Profile;
 
 void profile_init(Profile *prof, const char *label);
+void profile_reset(Profile *prof);
 void profile_start(Profile *prof);
 void profile_end(Profile *prof);
 int profile_list_size(void);
