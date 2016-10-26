@@ -36,6 +36,11 @@ void profile_end(Profile *prof)
     prof->av_ticks += (d / prof->call_count);
 }
 
+void profile_end_ptr(Profile **prof)
+{
+    profile_end(*prof);
+}
+
 int profile_list_size(void)
 {
     return num_profiles;
