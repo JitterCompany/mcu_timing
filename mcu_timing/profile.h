@@ -26,6 +26,23 @@ int profile_list_size(void);
  */
 int profile_get_data(Profile **list[MAX_PROFILES]);
 
+#if PROFILE_ENABLED == 1
+#define PROFILE \
+    static Profile prof = { \
+        .call_count = 0, \
+        .av_ticks = 0, \
+        .timestamp = 0, \
+        .label = 0 \
+    }; \
+    Profile *prof_ptr __attribute__ ((__cleanup__(profile_end_ptr))) = &prof; \
+    if (!prof.label) { \
+        profile_init(&prof, __func__); \
+    } \
+    profile_start(&prof);
+#else
+#define PROFILE
+#endif
+
 #endif
 
 
