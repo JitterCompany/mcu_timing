@@ -1,6 +1,6 @@
 #include "delay.h"
 #include "chip.h"
-#include "irq.h"
+#include <lpc_tools/irq.h>
 
 static struct {
     uint32_t timer_freq_mhz;

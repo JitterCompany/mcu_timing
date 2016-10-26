@@ -41,6 +41,10 @@ endif()
 #                   For example '43xx_m4' or '43xx_m0'.
 include(cmake/chip_libraries.cmake)
 
+CPM_AddModule("lpc_tools"
+    GIT_REPOSITORY "https://github.com/JitterCompany/lpc_tools.git"
+    )
+
 CPM_InitModule(${CPM_MODULE_NAME})
 
 #-----------------------------------------------------------------------
@@ -48,7 +52,7 @@ CPM_InitModule(${CPM_MODULE_NAME})
 #-----------------------------------------------------------------------
 
 file(GLOB_RECURSE SOURCES 
-    "*.c"
+    "${CPM_MODULE_NAME}/*.c"
     )
 include_directories("${CPM_MODULE_NAME}")
 
