@@ -32,8 +32,8 @@ void TIMER3_IRQHandler(void)
 {
     if (Chip_TIMER_MatchPending(LPC_TIMER3, 1)) {
         Chip_TIMER_ClearMatch(LPC_TIMER3, 1);
-        g_state.interrupt_count++;
     }
+    g_state.interrupt_count++;
 }
 
 void delay_init()
