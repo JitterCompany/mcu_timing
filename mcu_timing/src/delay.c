@@ -2,36 +2,82 @@
 #include "chip.h"
 #include <lpc_tools/irq.h>
 
+//
+// Platform specific code
+//
+#if (defined(MCU_PLATFORM_43xx_m4) || defined(MCU_PLATFORM_43xx_m0))
+    #define DELAY_TIMER             LPC_TIMER3
+    #define DELAY_TIMER_IRQn        TIMER3_IRQn
+    #define DELAY_IRQHandler        TIMER3_IRQHandler
+
+    #define DELAY_RGU_TIMER_RST     RGU_TIMER3_RST
+
+static inline void reset_timer(void)
+{
+    Chip_RGU_TriggerReset(DELAY_RGU_TIMER_RST);
+    while (Chip_RGU_InReset(DELAY_RGU_TIMER_RST)) {}
+}
+static inline uint32_t get_timer_clock_rate(void)
+{
+    return Chip_Clock_GetRate(CLK_MX_TIMER3);
+}
+
+#elif defined(MCU_PLATFORM_11uxx)
+    #define DELAY_TIMER             LPC_TIMER32_0
+    #define DELAY_TIMER_IRQn        TIMER_32_0_IRQn
+    #define DELAY_IRQHandler        TIMER32_0_IRQHandler
+
+static inline void reset_timer(void){}
+static inline uint32_t get_timer_clock_rate(void)
+{
+    return Chip_Clock_GetMainClockRate();
+}
+
+#else
+    #error "the current platform is not supported yet"
+    
+    /* To port to a new chip family, define these symbols:
+    DELAY_TIMER
+    DELAY_TIMER_IRQn
+    DELAY_IRQHandler
+
+    static inline void reset_timer(void);
+    static inline uint32_t get_timer_clock_rate(void);
+    */
+#endif
+
+
+
 static struct {
     uint32_t timer_freq_mhz;
     volatile uint32_t interrupt_count;
 } g_state;
 
+
+
 static void timer_init()
 {
 
     // Enable timer 3 clock and reset it
-    Chip_TIMER_Init(LPC_TIMER3);
-    Chip_RGU_TriggerReset(RGU_TIMER3_RST);
-    while (Chip_RGU_InReset(RGU_TIMER3_RST)) {}
-
+    Chip_TIMER_Init(DELAY_TIMER);
+    reset_timer();
 
     // Timer setup for match and interrupt at TICKRATE_HZ
-    Chip_TIMER_Reset(LPC_TIMER3);
-    Chip_TIMER_MatchEnableInt(LPC_TIMER3, 1);
-    Chip_TIMER_SetMatch(LPC_TIMER3, 1, 0xFFFFFFFF);
-    Chip_TIMER_ResetOnMatchDisable(LPC_TIMER3, 1);
-    Chip_TIMER_Enable(LPC_TIMER3);
+    Chip_TIMER_Reset(DELAY_TIMER);
+    Chip_TIMER_MatchEnableInt(DELAY_TIMER, 1);
+    Chip_TIMER_SetMatch(DELAY_TIMER, 1, 0xFFFFFFFF);
+    Chip_TIMER_ResetOnMatchDisable(DELAY_TIMER, 1);
+    Chip_TIMER_Enable(DELAY_TIMER);
 
     // Enable timer3 interrupt
-    NVIC_EnableIRQ(TIMER3_IRQn);
-    NVIC_ClearPendingIRQ(TIMER3_IRQn);
+    NVIC_EnableIRQ(DELAY_TIMER_IRQn);
+    NVIC_ClearPendingIRQ(DELAY_TIMER_IRQn);
 }
 
-void TIMER3_IRQHandler(void)
+void DELAY_IRQHandler(void)
 {
-    if (Chip_TIMER_MatchPending(LPC_TIMER3, 1)) {
-        Chip_TIMER_ClearMatch(LPC_TIMER3, 1);
+    if (Chip_TIMER_MatchPending(DELAY_TIMER, 1)) {
+        Chip_TIMER_ClearMatch(DELAY_TIMER, 1);
     }
     g_state.interrupt_count++;
 }
@@ -41,7 +87,7 @@ void delay_init()
     g_state.interrupt_count = 0;
     timer_init();
 
-    g_state.timer_freq_mhz = Chip_Clock_GetRate(CLK_MX_TIMER3) / 1000000;
+    g_state.timer_freq_mhz = get_timer_clock_rate() / 1000000;
 }
 
 uint64_t delay_get_timestamp()
@@ -50,7 +96,7 @@ uint64_t delay_get_timestamp()
     bool prev_irq_status = irq_disable();
 
     uint64_t timestamp = (((uint64_t) g_state.interrupt_count) << 32)
-                         | LPC_TIMER3->TC;
+                         | DELAY_TIMER->TC;
 
     // end critical section: re-enable timer interrupt
     if(prev_irq_status) {
