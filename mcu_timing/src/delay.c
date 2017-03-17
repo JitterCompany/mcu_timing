@@ -1,6 +1,7 @@
 #include "delay.h"
 #include "chip.h"
 #include <lpc_tools/irq.h>
+#include "profile.h"
 
 //
 // Platform specific code

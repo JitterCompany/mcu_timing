@@ -8,6 +8,7 @@
 typedef struct {
     uint64_t call_count;
     uint64_t ticks;
+    uint64_t max_ticks;
     uint64_t timestamp;
     const char *label;
 } Profile;
@@ -18,6 +19,7 @@ void profile_start(Profile *prof);
 void profile_end(Profile *prof);
 void profile_end_ptr(Profile **prof);
 uint64_t profile_get_average(Profile *prof);
+uint64_t profile_get_max(Profile *prof);
 int profile_list_size(void);
 
 /*
@@ -32,6 +34,7 @@ int profile_get_data(Profile **list[MAX_PROFILES]);
     static Profile prof = { \
         .call_count = 0, \
         .ticks = 0, \
+        .max_ticks = 0, \
         .timestamp = 0, \
         .label = 0 \
     }; \

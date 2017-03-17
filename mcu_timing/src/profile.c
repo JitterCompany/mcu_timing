@@ -18,6 +18,8 @@ void profile_reset(Profile *prof)
 {
     prof->call_count = 0;
     prof->ticks = 0;
+    prof->max_ticks = 0;
+    prof->timestamp = 0;
 }
 
 void profile_start(Profile *prof)
@@ -34,6 +36,9 @@ void profile_end(Profile *prof)
     uint64_t end = delay_get_timestamp();
     uint64_t d = end - prof->timestamp;
     
+    if(d > prof->max_ticks) {
+        prof->max_ticks = d;
+    }
     prof->ticks+= d;
     prof->call_count++;
 
@@ -43,6 +48,11 @@ void profile_end(Profile *prof)
 uint64_t profile_get_average(Profile *prof)
 {
     return (prof->ticks / prof->call_count);
+}
+
+uint64_t profile_get_max(Profile *prof)
+{
+    return (prof->max_ticks);
 }
 
 void profile_end_ptr(Profile **prof)
