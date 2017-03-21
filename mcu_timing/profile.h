@@ -7,19 +7,23 @@
 
 typedef struct {
     uint64_t call_count;
+    uint64_t threshold_call_count;
     uint64_t ticks;
     uint64_t max_ticks;
+    uint64_t threshold;
     uint64_t timestamp;
     const char *label;
 } Profile;
 
-void profile_init(Profile *prof, const char *label);
+void profile_init(Profile *prof, const char *label, uint64_t threshold);
 void profile_reset(Profile *prof);
 void profile_start(Profile *prof);
 void profile_end(Profile *prof);
 void profile_end_ptr(Profile **prof);
 uint64_t profile_get_average(Profile *prof);
+uint64_t profile_get_total_call_count(Profile *prof);
 uint64_t profile_get_max(Profile *prof);
+uint64_t profile_get_threshold_count(Profile *prof);
 int profile_list_size(void);
 
 /*
@@ -33,14 +37,16 @@ int profile_get_data(Profile **list[MAX_PROFILES]);
 #define PROFILE \
     static Profile prof = { \
         .call_count = 0, \
+        .threshold_call_count = 0, \
         .ticks = 0, \
         .max_ticks = 0, \
+        .threshold = 0, \
         .timestamp = 0, \
         .label = 0 \
     }; \
     Profile *prof_ptr __attribute__ ((__cleanup__(profile_end_ptr))) = &prof; \
     if (!prof.label) { \
-        profile_init(&prof, __func__); \
+        profile_init(&prof, __func__, 0); \
     } \
     profile_start(&prof);
 #else
