@@ -8,9 +8,22 @@ typedef struct {
     uint64_t target_timestamp;
 } delay_timeout_t;
 
-/* Initialize the internal timer.
+/**
+ * Initialize the delay timer.
+ *
+ * Call this function before using any other delay_ functions.
+ * This enables an internal timer + interrupt and initializes internal state.
  */
 void delay_init();
+
+/**
+ * De-initialized the delay timer.
+ *
+ * This stops the internal timer, disables the internal timer IRQ and
+ * resets all internal state. After de-initializing,
+ * call delay_init() again before calling any other delay_ function.
+ */
+void delay_deinit();
 
 /* Get a timestamp (unit is ticks since startup).
  *

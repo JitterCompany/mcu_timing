@@ -1,7 +1,7 @@
 #include "delay.h"
 #include "chip.h"
 #include <lpc_tools/irq.h>
-#include "profile.h"
+#include <string.h>
 
 //
 // Platform specific code
@@ -75,6 +75,14 @@ static void timer_init()
     NVIC_ClearPendingIRQ(DELAY_TIMER_IRQn);
 }
 
+static void timer_deinit()
+{
+    Chip_TIMER_DeInit(DELAY_TIMER);
+
+    NVIC_DisableIRQ(DELAY_TIMER_IRQn);
+    NVIC_ClearPendingIRQ(DELAY_TIMER_IRQn);
+}
+
 void DELAY_IRQHandler(void)
 {
     if (Chip_TIMER_MatchPending(DELAY_TIMER, 1)) {
@@ -89,6 +97,12 @@ void delay_init()
     timer_init();
 
     g_state.timer_freq_mhz = get_timer_clock_rate() / 1000000;
+}
+
+void delay_deinit()
+{
+    timer_deinit();
+    memset(&g_state, 0, sizeof(g_state));
 }
 
 uint64_t delay_get_timestamp()
