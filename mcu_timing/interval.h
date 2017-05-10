@@ -11,14 +11,15 @@ typedef void (*IntervalCB)(void);
 typedef struct {
     uint32_t time;
     IntervalCB cb;
-    bool reached;
+    volatile bool reached;
 } Interval;
 
 typedef struct {
     Interval intervals[MAX_INTERVALS];
-    int num_intervals;
-    uint32_t last_time;
-    uint32_t counter;
+    volatile int num_intervals;
+    volatile uint32_t last_time;
+    volatile uint32_t counter;
+    volatile bool poll_required;
 } IntervalList;
 
 /**
@@ -41,6 +42,13 @@ bool interval_add(IntervalList *interval_list, uint32_t time, IntervalCB cb);
  * This will call all callbacks that are due.
  */
 void interval_poll(IntervalList *interval_list);
+
+/**
+ * Optionally call this function to determine if interval_poll()
+ * needs to be called. This could be done from interrupt context or in other
+ * situations where you don't want the callbacks to be called (yet).
+ */
+bool interval_is_poll_required(IntervalList *interval_list);
 
 /**
  * update the interval list with the current time using the same time units 
