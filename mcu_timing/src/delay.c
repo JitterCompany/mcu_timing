@@ -7,11 +7,26 @@
 // Platform specific code
 //
 #if (defined(MCU_PLATFORM_43xx_m4) || defined(MCU_PLATFORM_43xx_m0))
-    #define DELAY_TIMER             LPC_TIMER3
-    #define DELAY_TIMER_IRQn        TIMER3_IRQn
-    #define DELAY_IRQHandler        TIMER3_IRQHandler
 
-    #define DELAY_RGU_TIMER_RST     RGU_TIMER3_RST
+    #if defined(MCU_PLATFORM_43xx_m4)
+        #define DELAY_TIMER             LPC_TIMER2
+        #define DELAY_TIMER_IRQn        TIMER2_IRQn
+        #define DELAY_IRQHandler        TIMER2_IRQHandler
+
+        #define DELAY_RGU_TIMER_RST     RGU_TIMER2_RST
+
+        #define DELAY_CLOCK             CLK_MX_TIMER2
+    #endif
+
+    #if defined(MCU_PLATFORM_43xx_m0)
+        #define DELAY_TIMER             LPC_TIMER3
+        #define DELAY_TIMER_IRQn        TIMER3_IRQn
+        #define DELAY_IRQHandler        TIMER3_IRQHandler
+
+        #define DELAY_RGU_TIMER_RST     RGU_TIMER3_RST
+
+        #define DELAY_CLOCK             CLK_MX_TIMER3
+    #endif
 
 static inline void reset_timer(void)
 {
@@ -20,7 +35,7 @@ static inline void reset_timer(void)
 }
 static inline uint32_t get_timer_clock_rate(void)
 {
-    return Chip_Clock_GetRate(CLK_MX_TIMER3);
+    return Chip_Clock_GetRate(DELAY_CLOCK);
 }
 
 #elif defined(MCU_PLATFORM_11uxx)
@@ -59,7 +74,7 @@ static struct {
 static void timer_init()
 {
 
-    // Enable timer 3 clock and reset it
+    // Enable timer clock and reset it
     Chip_TIMER_Init(DELAY_TIMER);
     reset_timer();
 
@@ -70,7 +85,7 @@ static void timer_init()
     Chip_TIMER_ResetOnMatchDisable(DELAY_TIMER, 1);
     Chip_TIMER_Enable(DELAY_TIMER);
 
-    // Enable timer3 interrupt
+    // Enable timer interrupt
     NVIC_EnableIRQ(DELAY_TIMER_IRQn);
     NVIC_ClearPendingIRQ(DELAY_TIMER_IRQn);
 }
@@ -87,8 +102,9 @@ void DELAY_IRQHandler(void)
 {
     if (Chip_TIMER_MatchPending(DELAY_TIMER, 1)) {
         Chip_TIMER_ClearMatch(DELAY_TIMER, 1);
+
+        g_state.interrupt_count++;
     }
-    g_state.interrupt_count++;
 }
 
 void delay_init()
