@@ -7,16 +7,29 @@
 typedef struct {
     
     // settings
-    uint64_t num_req_per_interval;
-    uint64_t max_tokens;
+    unsigned int num_req_per_interval;
     unsigned int interval_us;
+    unsigned int max_tokens;
 
     // state
-    unsigned int tokens;
+    unsigned int remainder;
+    uint64_t tokens;
     uint64_t timestamp;
 
 } TokenBucketLimiter;
 
+/**
+ * Initialize a rate limiter based on the token bucket algorithm.
+ *
+ * This rate limiter allows bursts of events up to 'max_burst',
+ * while the average rate is limted to 'max_requests' per 'interval_us'
+ * microseconds.
+ *
+ * When the limit is reached, no more events are allowed for the next
+ * 'interval_us' microseconds. For every 'interval_us', since the last event,
+ * another 'max_requests' more requests are allowed (but never more than the burst limit).
+ *
+ */
 void token_bucket_limiter_init(TokenBucketLimiter* limiter,
         unsigned int max_requests,
         unsigned int interval_us,

@@ -45,6 +45,10 @@ CPM_AddModule("lpc_tools"
     GIT_REPOSITORY "https://github.com/JitterCompany/lpc_tools.git"
     GIT_TAG "2.4")
 
+CPM_AddModule("c_utils"
+    GIT_REPOSITORY "https://github.com/JitterCompany/c_utils.git"
+    GIT_TAG "1.4.5")
+
 CPM_InitModule(${CPM_MODULE_NAME})
 
 #-----------------------------------------------------------------------

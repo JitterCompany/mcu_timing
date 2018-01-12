@@ -82,6 +82,29 @@ void test_rate__rounding(void)
     TEST_ASSERT_TRUE(token_bucket_limiter_allowed(&limit, 2));
 }
 
+void test_rate__allow_multiple_per_interval(void)
+{
+    delay_mock_init();
+    TokenBucketLimiter limit;
+    token_bucket_limiter_init(&limit, 3, 5*1e6, 10);
+
+    TEST_ASSERT_TRUE(token_bucket_limiter_allowed(&limit, 10));
+    TEST_ASSERT_FALSE(token_bucket_limiter_allowed(&limit, 1));
+
+    // t = 0 sec (0 tokens left after using all 10)
+    delay_mock_add_micros(4*1e6);
+    // t = 4 sec (0 tokens left)
+    TEST_ASSERT_FALSE(token_bucket_limiter_allowed(&limit, 1));
+
+    delay_mock_add_micros(1*1e6);
+    // t = 5 sec (3 tokens left: one interval passed, 3 tokens per interval)
+    TEST_ASSERT_TRUE(token_bucket_limiter_allowed(&limit, 3));
+
+    // t = 5 sec (0 tokens left after using all 3)
+    TEST_ASSERT_FALSE(token_bucket_limiter_allowed(&limit, 1));
+}
+
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -90,6 +113,7 @@ int main(void)
     RUN_TEST(test_rate__burst_limited);
     RUN_TEST(test_rate__burst_limited2);
     RUN_TEST(test_rate__rounding);
+    RUN_TEST(test_rate__allow_multiple_per_interval);
 
     UNITY_END();
     return 0;
