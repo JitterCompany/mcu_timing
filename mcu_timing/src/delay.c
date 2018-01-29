@@ -78,12 +78,14 @@ static void timer_init(const uint32_t cpu_freq_mhz)
 
     // run timer at 1Mhz
     Chip_TIMER_Reset(DELAY_TIMER);
+
     Chip_TIMER_PrescaleSet(DELAY_TIMER, cpu_freq_mhz-1);
 
     // interrupt on overflow (2^32 microseconds)
     Chip_TIMER_MatchEnableInt(DELAY_TIMER, 1);
     Chip_TIMER_SetMatch(DELAY_TIMER, 1, 0xFFFFFFFF);
     Chip_TIMER_ResetOnMatchDisable(DELAY_TIMER, 1);
+
     Chip_TIMER_Enable(DELAY_TIMER);
 
     // Enable timer interrupt
@@ -122,18 +124,23 @@ void delay_deinit()
 
 uint64_t delay_get_timestamp()
 {
-    // begin critical section: disable interrupts
-    bool prev_irq_status = irq_disable();
+    volatile uint32_t hi_count;
+    volatile uint32_t lo_count;
 
-    uint64_t timestamp = (((uint64_t) g_state.interrupt_count) << 32)
-                         | DELAY_TIMER->TC;
+    // The 64-bit count is created from two parts:
+    // * The lower 32-bits are directly from a 32-bit hardware timer
+    // * The higher bits are incremented by an interrupt whien the lower
+    //      bits overflow.
+    //
+    // The loop ensures that a consistent combinations of the two counts
+    // is used.
+    do { 
+        hi_count = g_state.interrupt_count;
+        lo_count = DELAY_TIMER->TC;
+    
+    } while (hi_count != g_state.interrupt_count);
 
-    // end critical section: re-enable timer interrupt
-    if(prev_irq_status) {
-        irq_enable();
-    }
-
-    return timestamp;
+    return (((uint64_t)hi_count) << 32) | lo_count;
 }
 
 uint64_t delay_calc_time_us(uint64_t start_timestamp, uint64_t end_timestamp)
