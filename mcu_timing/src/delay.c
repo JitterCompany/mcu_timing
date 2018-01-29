@@ -65,21 +65,22 @@ static inline uint32_t get_timer_clock_rate(void)
 
 
 static struct {
-    uint32_t timer_freq_mhz;
     volatile uint32_t interrupt_count;
 } g_state;
 
 
 
-static void timer_init()
+static void timer_init(const uint32_t cpu_freq_mhz)
 {
-
     // Enable timer clock and reset it
     Chip_TIMER_Init(DELAY_TIMER);
     reset_timer();
 
-    // Timer setup for match and interrupt at TICKRATE_HZ
+    // run timer at 1Mhz
     Chip_TIMER_Reset(DELAY_TIMER);
+    Chip_TIMER_PrescaleSet(DELAY_TIMER, cpu_freq_mhz-1);
+
+    // interrupt on overflow (2^32 microseconds)
     Chip_TIMER_MatchEnableInt(DELAY_TIMER, 1);
     Chip_TIMER_SetMatch(DELAY_TIMER, 1, 0xFFFFFFFF);
     Chip_TIMER_ResetOnMatchDisable(DELAY_TIMER, 1);
@@ -110,9 +111,7 @@ void DELAY_IRQHandler(void)
 void delay_init()
 {
     g_state.interrupt_count = 0;
-    timer_init();
-
-    g_state.timer_freq_mhz = get_timer_clock_rate() / 1000000;
+    timer_init(get_timer_clock_rate() / 1000000);
 }
 
 void delay_deinit()
@@ -143,8 +142,7 @@ uint64_t delay_calc_time_us(uint64_t start_timestamp, uint64_t end_timestamp)
         return 0;
     }
 
-    uint64_t difference_ticks = end_timestamp - start_timestamp;
-    return (difference_ticks / (uint64_t)(g_state.timer_freq_mhz));
+    return end_timestamp - start_timestamp;
 }
 
 void delay_us(uint64_t microseconds)
@@ -156,9 +154,7 @@ void delay_us(uint64_t microseconds)
 
 void delay_timeout_set(delay_timeout_t *timeout, uint64_t microseconds)
 {
-    uint64_t current_ticks = delay_get_timestamp();
-    uint64_t timeout_ticks = microseconds * g_state.timer_freq_mhz;
-    timeout->target_timestamp = current_ticks + timeout_ticks;
+    timeout->target_timestamp = delay_get_timestamp() + microseconds;
 }
 
 bool delay_timeout_done(delay_timeout_t *timeout)
