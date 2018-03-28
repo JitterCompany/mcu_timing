@@ -70,16 +70,16 @@ static struct {
 
 
 
-static void timer_init(const uint32_t cpu_freq_mhz)
+static void timer_init(void)
 {
     // Enable timer clock and reset it
     Chip_TIMER_Init(DELAY_TIMER);
     reset_timer();
-
-    // run timer at 1Mhz
     Chip_TIMER_Reset(DELAY_TIMER);
 
-    Chip_TIMER_PrescaleSet(DELAY_TIMER, cpu_freq_mhz-1);
+    // run timer at 1Mhz
+    const uint32_t cpu_freq_MHz = get_timer_clock_rate() / 1000000;
+    Chip_TIMER_PrescaleSet(DELAY_TIMER, cpu_freq_MHz-1);
 
     // interrupt on overflow (2^32 microseconds)
     Chip_TIMER_MatchEnableInt(DELAY_TIMER, 1);
@@ -113,7 +113,7 @@ void DELAY_IRQHandler(void)
 void delay_init()
 {
     g_state.interrupt_count = 0;
-    timer_init(get_timer_clock_rate() / 1000000);
+    timer_init();
 }
 
 void delay_deinit()
