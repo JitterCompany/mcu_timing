@@ -43,7 +43,7 @@ include(cmake/chip_libraries.cmake)
 
 CPM_AddModule("lpc_tools"
     GIT_REPOSITORY "https://github.com/JitterCompany/lpc_tools.git"
-    GIT_TAG "2.6.0")
+    GIT_TAG "2.6.1")
 
 CPM_AddModule("c_utils"
     GIT_REPOSITORY "https://github.com/JitterCompany/c_utils.git"
