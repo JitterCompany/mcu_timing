@@ -15,7 +15,7 @@ if("${MCU_PLATFORM}" STREQUAL "43xx_m4")
 
     CPM_AddModule("chip_lpc43xx_m4"
         GIT_REPOSITORY "https://github.com/JitterCompany/chip_lpc43xx_m4.git"
-        GIT_TAG "3.2"
+        GIT_TAG "3.3.0"
         USE_EXISTING_VER TRUE)
 
 elseif("${MCU_PLATFORM}" STREQUAL "43xx_m0")
@@ -23,15 +23,24 @@ elseif("${MCU_PLATFORM}" STREQUAL "43xx_m0")
 
     CPM_AddModule("chip_lpc43xx_m0"
         GIT_REPOSITORY "https://github.com/JitterCompany/chip_lpc43xx_m0.git"
-        GIT_TAG "3.2"
+        GIT_TAG "3.3.0"
         USE_EXISTING_VER TRUE)
 
 elseif("${MCU_PLATFORM}" STREQUAL "11uxx")
-    message(STATUS "${CPM_MODULE_NAME}: Platform '11uxx' detected")
+    message(STATUS "${CPM_MODULE_NAME}: Platform '11uxx' detected.")
+    message(WARNING "${CPM_MODULE_NAME}: Platform '11uxx' is deprecated, the new name is 'lpc11xxx'.")
+     add_definitions(-DMCU_PLATFORM_lpc11xxx)
 
-    CPM_AddModule("chip_lpc11uxx"
-        GIT_REPOSITORY "https://github.com/JitterCompany/chip_lpc11uxx.git"
-        GIT_TAG "1.1")
+    CPM_AddModule("chip_lpc11xxx"
+        GIT_REPOSITORY "https://github.com/JitterCompany/chip_lpc11xxx.git"
+        GIT_TAG "1.3")
+
+elseif("${MCU_PLATFORM}" STREQUAL "lpc11xxx")
+    message(STATUS "${CPM_MODULE_NAME}: Platform '${MCU_PLATFORM}' detected")
+
+    CPM_AddModule("chip_lpc11xxx"
+        GIT_REPOSITORY "https://github.com/JitterCompany/chip_${MCU_PLATFORM}.git"
+        GIT_TAG "1.3")
 
 else()
     message(FATAL_ERROR "${CPM_MODULE_NAME}: platform '${MCU_PLATFORM}' not supported")

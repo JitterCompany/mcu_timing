@@ -38,7 +38,7 @@ static inline uint32_t get_timer_clock_rate(void)
     return Chip_Clock_GetRate(DELAY_CLOCK);
 }
 
-#elif defined(MCU_PLATFORM_11uxx)
+#elif defined(MCU_PLATFORM_lpc11xxx)
     #define DELAY_TIMER             LPC_TIMER32_0
     #define DELAY_TIMER_IRQn        TIMER_32_0_IRQn
     #define DELAY_IRQHandler        TIMER32_0_IRQHandler
