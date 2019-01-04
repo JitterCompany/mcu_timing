@@ -29,18 +29,18 @@ elseif("${MCU_PLATFORM}" STREQUAL "43xx_m0")
 elseif("${MCU_PLATFORM}" STREQUAL "11uxx")
     message(STATUS "${CPM_MODULE_NAME}: Platform '11uxx' detected.")
     message(WARNING "${CPM_MODULE_NAME}: Platform '11uxx' is deprecated, the new name is 'lpc11xxx'.")
-     add_definitions(-DMCU_PLATFORM_lpc11xxx)
+    add_definitions(-DMCU_PLATFORM_lpc11xxx)
 
     CPM_AddModule("chip_lpc11xxx"
         GIT_REPOSITORY "https://github.com/JitterCompany/chip_lpc11xxx.git"
-        GIT_TAG "1.3")
+        GIT_TAG "1.4")
 
 elseif("${MCU_PLATFORM}" STREQUAL "lpc11xxx")
     message(STATUS "${CPM_MODULE_NAME}: Platform '${MCU_PLATFORM}' detected")
 
     CPM_AddModule("chip_lpc11xxx"
         GIT_REPOSITORY "https://github.com/JitterCompany/chip_${MCU_PLATFORM}.git"
-        GIT_TAG "1.3")
+        GIT_TAG "1.4")
 
 else()
     message(FATAL_ERROR "${CPM_MODULE_NAME}: platform '${MCU_PLATFORM}' not supported")
