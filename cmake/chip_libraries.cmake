@@ -33,14 +33,14 @@ elseif("${MCU_PLATFORM}" STREQUAL "11uxx")
 
     CPM_AddModule("chip_lpc11xxx"
         GIT_REPOSITORY "https://github.com/JitterCompany/chip_lpc11xxx.git"
-        GIT_TAG "1.4")
+        GIT_TAG "1.4.1")
 
 elseif("${MCU_PLATFORM}" STREQUAL "lpc11xxx")
     message(STATUS "${CPM_MODULE_NAME}: Platform '${MCU_PLATFORM}' detected")
 
     CPM_AddModule("chip_lpc11xxx"
         GIT_REPOSITORY "https://github.com/JitterCompany/chip_${MCU_PLATFORM}.git"
-        GIT_TAG "1.4")
+        GIT_TAG "1.4.1")
 
 else()
     message(FATAL_ERROR "${CPM_MODULE_NAME}: platform '${MCU_PLATFORM}' not supported")
