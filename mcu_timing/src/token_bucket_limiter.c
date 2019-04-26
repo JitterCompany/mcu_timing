@@ -11,71 +11,75 @@ void token_bucket_limiter_init(TokenBucketLimiter* limiter,
     limiter->interval_us = interval_us;
     limiter->max_tokens = max_burst;
 
-    limiter->remainder = limiter->max_tokens;
-    limiter->tokens = 0;
+    limiter->available_tokens = limiter->max_tokens;
+    limiter->micro_tokens = 0;
     limiter->timestamp = delay_get_timestamp();
 }
 
 /*
  * Every interval 'num_req_per_interval' tokens are added, up to max_burst.
  *
- * Implementation: instead of storing tokens, they are stored as multiple
- * of the time interval: 1 token = 'interval' microtokens.
- * 
- * Internally all calculations are based on these 'microtokens' to make
- * calculation of time differences easier & more efficient.
+ * Implementation: instead of directly storing tokens,
+ * they are first stored as multiple of the time interval:
+ * 1 token = 'interval' microtokens.
+ *
+ * When enough microtokens are buffered to form a multiple of 'num_req_pre_interval',
+ * they are converted to 'available_tokens'.
+ * This approach allows precise calculations without depending on a fixed-frequency
+ * update of the available tokens.
  */
-bool token_bucket_limiter_allowed(TokenBucketLimiter* limiter,
-        unsigned int num_events)
+static void update(TokenBucketLimiter *limiter)
 {
     const unsigned int n_per_req = limiter->num_req_per_interval;
-    const uint64_t interval_us = limiter->interval_us;
+    const uint64_t scale_factor = limiter->interval_us;
 
-    // add 'num_req_per_interval' new tokens every 'interval_us' microseconds
+    // add 'num_req_per_interval' new micro_tokens every 'interval_us' microseconds
     uint64_t now = delay_get_timestamp();
     uint64_t new_micros = delay_calc_time_us(limiter->timestamp, now);
     const uint64_t new_u_tokens = new_micros * n_per_req;
     limiter->timestamp = now;
        
-    const uint64_t max_new = ((limiter->max_tokens - limiter->remainder)
-        * interval_us);
+    const uint64_t max_new = ((limiter->max_tokens - limiter->available_tokens)
+        * scale_factor);
 
     if(new_u_tokens > max_new) {
-        limiter->tokens = max_new;
+        limiter->micro_tokens = max_new;
 
-    } else if((max_new - new_u_tokens) < limiter->tokens) {
-        limiter->tokens = max_new;
+    } else if((max_new - new_u_tokens) < limiter->micro_tokens) {
+        limiter->micro_tokens = max_new;
 
     } else {
-        limiter->tokens+= new_u_tokens;
+        limiter->micro_tokens+= new_u_tokens;
     }
 
-    // First claim events from the remainder
-    unsigned int claim_remain = min(limiter->remainder, num_events);
-    num_events-= claim_remain; 
-   
-    // All required events could be claimed: succes! 
-    if(!num_events) {
-        limiter->remainder-= claim_remain;
-        return true;
-    }
+    // Normalize: move any multiple of 'n_per_req' micro_tokens from
+    // the microtokens buffer to the available_tokens
+    const unsigned int scaled_n_per_req = n_per_req * scale_factor;
+    const unsigned int available = n_per_req * (limiter->micro_tokens / (scaled_n_per_req));
+    limiter->micro_tokens-= (available * scale_factor);
+    limiter->available_tokens+= available;
+}
 
-    // Some 'extra' tokens should be in the bucket even if they are not used.
-    // This simulates adding n_per_req tokens at once every interval, instead
-    // of adding one token every (interval/n_per_req).
-    unsigned int extra = num_events % n_per_req;
-    uint64_t extra_required = 0;
-    if(extra) {
-        extra_required = ((n_per_req - extra)) * interval_us;
-    }
-    const uint64_t required = (uint64_t)num_events * interval_us;
 
-    // Check if we have enough microtokens
-    if((required + extra_required) > limiter->tokens) {
+
+bool token_bucket_limiter_allowed(TokenBucketLimiter* limiter,
+        unsigned int num_events)
+{
+
+    update(limiter);
+
+    if(limiter->available_tokens < num_events) {
         return false;
     }
-    limiter->tokens -= required;
-    limiter->remainder-= claim_remain;
+
+    limiter->available_tokens-= num_events;
     return true;
+}
+
+unsigned int token_bucket_limiter_count_available(TokenBucketLimiter* limiter)
+{
+    update(limiter);
+
+    return limiter->available_tokens;
 }
 

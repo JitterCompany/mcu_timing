@@ -12,8 +12,8 @@ typedef struct {
     unsigned int max_tokens;
 
     // state
-    unsigned int remainder;
-    uint64_t tokens;
+    unsigned int available_tokens;
+    uint64_t micro_tokens;
     uint64_t timestamp;
 
 } TokenBucketLimiter;
@@ -54,6 +54,14 @@ void token_bucket_limiter_init(TokenBucketLimiter* limiter,
  */
 bool token_bucket_limiter_allowed(TokenBucketLimiter* limiter,
         unsigned int num_events);
+
+/**
+ * Check how many events would be allowed at this moment
+ *
+ * This provides an easy way to check if the rate limiter would
+ * allow one or more token_bucket_limiter_allowed() calls.
+ */
+unsigned int token_bucket_limiter_count_available(TokenBucketLimiter* limiter);
 
 #endif
 
