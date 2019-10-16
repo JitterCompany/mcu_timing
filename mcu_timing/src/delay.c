@@ -70,7 +70,7 @@ static struct {
 
 
 
-static void timer_init(void)
+static void timer_init(uint32_t offset_ticks)
 {
     // Enable timer clock and reset it
     Chip_TIMER_Init(DELAY_TIMER);
@@ -86,14 +86,16 @@ static void timer_init(void)
     Chip_TIMER_SetMatch(DELAY_TIMER, 1, 0xFFFFFFFF);
     Chip_TIMER_ResetOnMatchDisable(DELAY_TIMER, 1);
 
-    Chip_TIMER_Enable(DELAY_TIMER);
+    DELAY_TIMER->TC = offset_ticks;
 
     // Enable timer interrupt
-    NVIC_EnableIRQ(DELAY_TIMER_IRQn);
     NVIC_ClearPendingIRQ(DELAY_TIMER_IRQn);
+    NVIC_EnableIRQ(DELAY_TIMER_IRQn);
+
+    Chip_TIMER_Enable(DELAY_TIMER);
 }
 
-static void timer_deinit()
+static void timer_deinit(void)
 {
     Chip_TIMER_DeInit(DELAY_TIMER);
 
@@ -110,16 +112,24 @@ void DELAY_IRQHandler(void)
     }
 }
 
-void delay_init()
+void delay_init(void)
 {
     g_state.interrupt_count = 0;
-    timer_init();
+    timer_init(0);
 }
 
-void delay_deinit()
+void delay_deinit(void)
 {
     timer_deinit();
-    memset(&g_state, 0, sizeof(g_state));
+}
+
+void delay_reinit(uint64_t initial_timestamp)
+{
+    const uint32_t hi_offset = (initial_timestamp >> 32);
+    const uint32_t lo_offset = (initial_timestamp & 0xFFFFFFFF);
+
+    g_state.interrupt_count = hi_offset;
+    timer_init(lo_offset);
 }
 
 uint64_t delay_get_timestamp()

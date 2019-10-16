@@ -14,7 +14,19 @@ typedef struct {
  * Call this function before using any other delay_ functions.
  * This enables an internal timer + interrupt and initializes internal state.
  */
-void delay_init();
+void delay_init(void);
+
+/**
+ * Re-initialize the delay timer with a given initial timestamp.
+ *
+ * Use this function if the delay timer was de-initialized for some time,
+ * for example during a deep sleep state.
+ *
+ * All other functions such as delay_get_timestamp() or delay_timeout_done()
+ * will behave as if the timer has continued ticking to the given timestamp.
+ */
+void delay_reinit(uint64_t initial_timestamp);
+
 
 /**
  * De-initialized the delay timer.
@@ -23,13 +35,13 @@ void delay_init();
  * resets all internal state. After de-initializing,
  * call delay_init() again before calling any other delay_ function.
  */
-void delay_deinit();
+void delay_deinit(void);
 
 /* Get a timestamp (unit is ticks since startup).
  *
  * Use the result for delay_calc_time_us to convert to microseconds
  */
-uint64_t delay_get_timestamp();
+uint64_t delay_get_timestamp(void);
 
 /* Calculate the time diference in microseconds between two timestamps
  *
