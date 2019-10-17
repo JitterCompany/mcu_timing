@@ -45,7 +45,7 @@ endif()
 # DELAY_SHARE_TIMER     Optional flag to enable sharing the timer peripheral
 #                       between all available mcu cores
 #
-# DELAY_OWNER           If DELAY_SHARE_TIMER is defined, define DELAY_OWNER
+# DELAY_OWNER           If DELAY_SHARE_TIMER is set, define DELAY_OWNER
 #                       for the core that 'owns' the delay: this is the only
 #                       core that can init / deinit and this core will handle
 #                       the interrupts.

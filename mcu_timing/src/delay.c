@@ -10,9 +10,10 @@
 // Platform specific code
 //
 #if (!defined(DELAY_MEMORY_SECTION))
-    #if defined(DELAY_SHARE_TIMER)
-        #error "When sharing the timer between cpu cores, DELAY_MEMORY_SECTION \
-            "should be defined!\nIf this is not a multi-CPU setup, disable DELAY_SHARE_TIMER"
+    #if (DELAY_SHARE_TIMER)
+        #error When sharing the timer between cpu cores, DELAY_MEMORY_SECTION \
+            should be defined! \
+            If this is not a multi-CPU setup, disable DELAY_SHARE_TIMER!
     #endif
     #define SECTION_STATEMENT
 #else
@@ -21,14 +22,17 @@
 
 #if (defined(MCU_PLATFORM_43xx_m4) || defined(MCU_PLATFORM_43xx_m0))
 
-    #if (defined(MCU_PLATFORM_43xx_m4) || defined(DELAY_SHARE_TIMER))
-        #define DELAY_TIMER             LPC_TIMER2
-        #define DELAY_TIMER_IRQn        TIMER2_IRQn
-        #define DELAY_IRQHandler        TIMER2_IRQHandler
+    #if (DELAY_SHARE_TIMER)
+        #define DELAY_TIMER             LPC_TIMER3
 
-        #define DELAY_RGU_TIMER_RST     RGU_TIMER2_RST
+        #if (DELAY_OWNER)
+            #define DELAY_TIMER_IRQn        TIMER3_IRQn
+            #define DELAY_IRQHandler        TIMER3_IRQHandler
 
-        #define DELAY_CLOCK             CLK_MX_TIMER2
+            #define DELAY_RGU_TIMER_RST     RGU_TIMER3_RST
+
+            #define DELAY_CLOCK             CLK_MX_TIMER3
+        #endif
 
     #elif defined(MCU_PLATFORM_43xx_m0)
         #define DELAY_TIMER             LPC_TIMER3
@@ -38,8 +42,19 @@
         #define DELAY_RGU_TIMER_RST     RGU_TIMER3_RST
 
         #define DELAY_CLOCK             CLK_MX_TIMER3
+
+    #elif (defined(MCU_PLATFORM_43xx_m4))
+        #define DELAY_TIMER             LPC_TIMER2
+        #define DELAY_TIMER_IRQn        TIMER2_IRQn
+        #define DELAY_IRQHandler        TIMER2_IRQHandler
+
+        #define DELAY_RGU_TIMER_RST     RGU_TIMER2_RST
+
+        #define DELAY_CLOCK             CLK_MX_TIMER2
+
     #endif
 
+#if (DELAY_OWNER)
 static inline void reset_timer(void)
 {
     Chip_RGU_TriggerReset(DELAY_RGU_TIMER_RST);
@@ -49,17 +64,20 @@ static inline uint32_t get_timer_clock_rate(void)
 {
     return Chip_Clock_GetRate(DELAY_CLOCK);
 }
+#endif
 
 #elif defined(MCU_PLATFORM_lpc11xxx)
     #define DELAY_TIMER             LPC_TIMER32_0
     #define DELAY_TIMER_IRQn        TIMER_32_0_IRQn
     #define DELAY_IRQHandler        TIMER32_0_IRQHandler
 
+#if (DELAY_OWNER)
 static inline void reset_timer(void){}
 static inline uint32_t get_timer_clock_rate(void)
 {
     return Chip_Clock_GetMainClockRate();
 }
+#endif
 
 #else
     #error "the current platform is not supported yet"
@@ -83,20 +101,30 @@ static inline uint32_t get_timer_clock_rate(void)
  *
  * overflow_count   counts the amount of times the 32-bit timer has overflowed.
  * Together with the 32-bit timer value this forms a 64-bit timer.
- *
- * seq_lock         is used for syncronization. This value is read before and
- *                  after reading g_state. If it has changed or it is uneven,
- *                  the read data should be discarded and read again.
  */
-static struct {
+typedef struct {
     volatile bool past_halfway;
     volatile uint32_t overflow_count;
-    volatile uint32_t seq_lock;
+} TimeInfo;
+
+/**
+ * index    IRQ toggles this between 1 and 0: g_state.time[index] always
+ * contains a consistent set of data. This allows the DELAY_TIMER_IRQ to run
+ * at a low priority: any high-priority IRQ can interrupt it
+ * and read a consistent set of time info from the last index.
+ *
+ * NOTE: it might even be possible to use 'index' as a 'past_halfway' signal,
+ * as both normally toggle at the same time. But this might sligtly complicate
+ * delay_reinit()..
+ */
+static struct {
+    TimeInfo time[2];
+    volatile bool index;
 
 } g_state SECTION_STATEMENT;
 
 
-#if defined(DELAY_OWNER)
+#if (DELAY_OWNER)
 static void timer_init(uint32_t offset_ticks)
 {
     // Enable timer clock and reset it
@@ -138,36 +166,34 @@ static void timer_deinit(void)
 
 void DELAY_IRQHandler(void)
 {
-    // seq_lock: ensure consistency for readers.
-    // Code running in another context (even another cpu)
-    // can detect:
-    // - seq_lock uneven: wait while irq is busy
-    // - seq_lock changed: irq happened, retry
-    g_state.seq_lock++;
-    __DMB();
-    assert(g_state.seq_lock & 1);
+    const bool new_index = !(g_state.index);
+    TimeInfo *new_time = &g_state.time[new_index];
+
+    const uint32_t ovf_count = (g_state.time[g_state.index].overflow_count);
 
     if (Chip_TIMER_MatchPending(DELAY_TIMER, 1)) {
         Chip_TIMER_ClearMatch(DELAY_TIMER, 1);
 
-        g_state.overflow_count++;
-        g_state.past_halfway = false;
+        // Overflow: increment overflow_count
+        new_time->overflow_count = ovf_count + 1;
+        new_time->past_halfway = false;
     }
 
     if (Chip_TIMER_MatchPending(DELAY_TIMER, 2)) {
         Chip_TIMER_ClearMatch(DELAY_TIMER, 2);
-        g_state.past_halfway = true;
+
+        // Timer is halfway: set 'past_halfway' flag
+        new_time->overflow_count = ovf_count;
+        new_time->past_halfway = true;
     }
 
     __DMB();
-    g_state.seq_lock++;
+    g_state.index = new_index;
 }
 
 void delay_init(void)
 {
-    g_state.past_halfway = 0;
-    g_state.overflow_count = 0;
-    g_state.seq_lock = 0;
+    memset(&g_state, 0, sizeof(g_state));
     timer_init(0);
 }
 
@@ -181,9 +207,16 @@ void delay_reinit(uint64_t initial_timestamp)
     const uint32_t hi_offset = (initial_timestamp >> 32);
     const uint32_t lo_offset = (initial_timestamp & 0xFFFFFFFF);
 
-    g_state.overflow_count = hi_offset;
-    g_state.past_halfway = (lo_offset >= TIMER_HALFWAY);
-    g_state.seq_lock = 0;
+    const bool new_index = !(g_state.index);
+    TimeInfo *time = &g_state.time[new_index];
+    __DMB();
+
+    time->overflow_count = hi_offset;
+    time->past_halfway = (lo_offset >= TIMER_HALFWAY);
+
+    __DMB();
+    g_state.index = new_index;
+
     timer_init(lo_offset);
 }
 #endif
@@ -207,28 +240,24 @@ uint64_t delay_get_timestamp()
     //
     // The loop ensures that a consistent combinations of the two counts
     // is used.
-    uint32_t lock_value;
+    bool index;
     do { 
-        lock_value = g_state.seq_lock;
+        index = g_state.index;
+        const TimeInfo *time = &g_state.time[index];
         __DMB();
 
-        // Uneven: wait while state is being changed
-        if(lock_value & 1) {
-            continue;
-        }
-
-        hi_count = g_state.overflow_count;
+        hi_count = time->overflow_count;
         lo_count = DELAY_TIMER->TC;
 
         // Detect timer overflow in case we run on a different cpu core from
         // the IRQ handler (or from a higher irq priority)
-        if(g_state.past_halfway && (lo_count < TIMER_HALFWAY)) {
+        if(time->past_halfway && (lo_count < TIMER_HALFWAY)) {
             hi_count+=1;
         }
     
         // Repeat if state was changed in between (e.g. IRQ is/was active)
         __DMB();
-    } while (lock_value != g_state.seq_lock);
+    } while (index != g_state.index);
 
     return (((uint64_t)hi_count) << 32) | lo_count;
 }
