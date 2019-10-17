@@ -39,6 +39,21 @@ endif()
 #
 # MCU_PLATFORM      A supported microcontroller platform.
 #                   For example '43xx_m4' or '43xx_m0'.
+#
+# Optional preprocessor defines:
+#
+# DELAY_SHARE_TIMER     Optional flag to enable sharing the timer peripheral
+#                       between all available mcu cores
+#
+# DELAY_OWNER           If DELAY_SHARE_TIMER is defined, define DELAY_OWNER
+#                       for the core that 'owns' the delay: this is the only
+#                       core that can init / deinit and this core will handle
+#                       the interrupts.
+#
+# DELAY_MEMORY_SECTION  Linker section where the state is saved.
+#                       If DELAY_SHARE_TIMER is set, make sure this section
+#                       is mapped to the same memory address on all cores!
+#
 include(cmake/chip_libraries.cmake)
 
 CPM_AddModule("lpc_tools"

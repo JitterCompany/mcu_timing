@@ -8,11 +8,23 @@ typedef struct {
     uint64_t target_timestamp;
 } delay_timeout_t;
 
+
+// If you have DELAY_SHARE_TIMER set in cmake, you should set DELAY_OWNER
+// for the core that 'owns' the delay. Only this core should init(), deinit() etc.
+#if (!defined(DELAY_SHARE_TIMER) && !defined(DELAY_OWNER))
+    #define DELAY_OWNER
+#endif
+
+#if defined(DELAY_OWNER)
+
 /**
  * Initialize the delay timer.
  *
  * Call this function before using any other delay_ functions.
  * This enables an internal timer + interrupt and initializes internal state.
+ *
+ * Note: on multicore processors, each core is typically assigned its own timer peripheral.
+ * To share the same timer between cores, define DELAY_SHARE_TIMER in CMake.
  */
 void delay_init(void);
 
@@ -36,6 +48,10 @@ void delay_reinit(uint64_t initial_timestamp);
  * call delay_init() again before calling any other delay_ function.
  */
 void delay_deinit(void);
+
+#endif
+
+
 
 /* Get a timestamp (unit is ticks since startup).
  *
