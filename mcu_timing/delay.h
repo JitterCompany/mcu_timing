@@ -9,13 +9,22 @@ typedef struct {
 } delay_timeout_t;
 
 
-// If you have DELAY_SHARE_TIMER set in cmake, you should set DELAY_OWNER
+// If you have DELAY_SHARE_TIMER=1 set in cmake, you should set DELAY_OWNER=1
 // for the core that 'owns' the delay. Only this core should init(), deinit() etc.
-#if (!defined(DELAY_SHARE_TIMER) && !defined(DELAY_OWNER))
-    #define DELAY_OWNER
+// By default, this feature is disabled and each core 'owns' its own timer.
+#if (!defined(DELAY_SHARE_TIMER))
+    #define DELAY_SHARE_TIMER (0)
+#endif
+#if (!defined(DELAY_OWNER))
+    #if (!DELAY_SHARE_TIMER)
+        #define DELAY_OWNER (1)
+    #else
+        #define DELAY_OWNER (0)
+    #endif
 #endif
 
-#if defined(DELAY_OWNER)
+
+#if (DELAY_OWNER)
 
 /**
  * Initialize the delay timer.
